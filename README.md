@@ -231,58 +231,6 @@ denoising.)
 
 ---
 
-## API contract (summary)
-
-The backend and frontend share one contract. Full field list is the source of
-truth in `app/` + `web/`; this is the summary.
-
-**Static / pages**
-
-- `GET /` → returns `web/index.html`.
-- `GET /static/*` → `web/` mounted as StaticFiles (`/static/css/styles.css`,
-  `/static/js/app.js`, `/static/js/howto.js`, `/static/js/playground.js`).
-
-**REST**
-
-- `GET /api/health` → `{"status":"ok","mode":"real"|"mock","model_id":str,"device":str,"precision":str}`
-- `GET /api/config` → `{"defaults":{…all generation params…},"bounds":{param:{"min":…,"max":…,"step":…}},"display_defaults":{…}}`
-
-**WebSocket** `/ws/generate`
-
-Client → server:
-
-```jsonc
-// START
-{"type":"generate","prompt":"…","params":{
-  "max_new_tokens":256,"canvas_length":256,"max_denoising_steps":48,
-  "temperature_start":0.8,"temperature_end":0.4,"entropy_bound":0.1,
-  "adaptive_stop_threshold":0.005,"top_k":0,"seed":null}}
-// CANCEL
-{"type":"cancel"}
-```
-
-Server → client (JSON frames):
-
-```jsonc
-{"type":"start","mode":"real"|"mock","canvas_length":N,"max_denoising_steps":N,"prompt":"…"}
-
-{"type":"step","canvas_index":c,"step":s,"total_steps":S,
- "tokens":[{"text":"…","state":"mask"|"committed"|"tentative","confidence":0.0,"changed":false}, …],
- "committed_text":"text committed so far across all canvases",
- "newly_committed":["tok", …]}
- // tokens[] is the FULL current rendering of the active canvas every step
- // (mask entries included) so the block can render resolving in place.
-
-{"type":"canvas_committed","canvas_index":c,"text":"…"}
-
-{"type":"done","text":"full final decoded text",
- "stats":{"canvases":n,"steps_total":n,"tokens":n,"gen_seconds":x,"tokens_per_second":x}}
-
-{"type":"error","message":"…"}
-```
-
----
-
 ## HF token & gating
 
 DiffusionGemma is **Apache-2.0** per its model card, but downloading the weights
@@ -403,10 +351,3 @@ the `start` frame carries `approx: true`.
 Always cross-check the current
 [model card](https://huggingface.co/google/diffusiongemma-26B-A4B-it) and the
 latest `transformers` for the authoritative API.
-
----
-
-## License
-
-Apache-2.0. The DiffusionGemma model itself is distributed under its own terms on
-the [model card](https://huggingface.co/google/diffusiongemma-26B-A4B-it).
