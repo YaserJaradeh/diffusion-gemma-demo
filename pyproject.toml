@@ -76,7 +76,7 @@ dlm = "app.server:main"
 # Packaging: flat layout. `app` is a top-level package at the repo root and the
 # entry point imports it as `app.server`. We declare the package explicitly so
 # setuptools' flat-layout auto-discovery does not choke on the sibling `web/`
-# and `slurm/` directories (it would otherwise error with "Multiple top-level
+# directory (it would otherwise error with "Multiple top-level
 # packages discovered").
 #
 # `uv sync` installs this project in editable mode by default, so the running

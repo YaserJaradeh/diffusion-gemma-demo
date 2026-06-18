@@ -146,8 +146,8 @@ def load_dotenv_files() -> List[str]:
 
     Searched, in order: the repo-root ``.env`` (next to ``.env.example``) and a
     ``.env`` in the current working directory.  Existing environment variables are
-    **never** overwritten, so a value exported in the shell or the SLURM script
-    still takes precedence over the file.  Idempotent: only the first call has an
+    **never** overwritten, so a value exported in the shell still takes
+    precedence over the file.  Idempotent: only the first call has an
     effect.  Returns the list of files actually loaded (for logging).
     """
     global _DOTENV_LOADED
