@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diffusiongemma-demo"
+version = "0.1.0"
+description = "Interactive web demo for the DiffusionGemma block-diffusion language model: watch a token canvas denoise in place, with a laptop-friendly mock mode and a real H100 mode."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "DiffusionGemma Demo" }]
+keywords = ["diffusion", "llm", "gemma", "fastapi", "websocket", "demo"]
+
+# ---------------------------------------------------------------------------
+# Core dependencies (LIGHT — these are all that "mock mode" needs).
+# Mock mode runs on a laptop with no GPU and no model weights, so we keep the
+# default install footprint tiny: just the web server stack. Reasonable lower
+# bounds only; we intentionally do NOT pin tightly.
+# ---------------------------------------------------------------------------
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",   # [standard] pulls in the websockets + httptools extras the /ws endpoint needs
+    "pydantic>=2.5,<3",          # v2 API (model_config, field validation) is assumed throughout
+    "python-multipart>=0.0.9",   # form / multipart parsing for FastAPI
+    "jinja2>=3.1",               # optional templating; index.html is served from disk, kept here for convenience
+    "python-dotenv>=1.0",        # auto-loads .env at startup (config.load_dotenv_files); stdlib fallback exists
+]
+
+# ---------------------------------------------------------------------------
+# GPU / "real" mode. Install with:  uv sync --extra gpu
+#
+# NOTE: DiffusionGemma is a brand-new architecture (released ~2026-06).
+#   * It may require a VERY recent `transformers`. If `DiffusionGemmaForBlockDiffusion`
+#     is not importable from your installed transformers, install from source:
+#         uv pip install "git+https://github.com/huggingface/transformers"
+#     (or add that URL in place of the transformers bound below).
+#   * fp8 inference needs appropriate fp8 kernels/hardware support; this is NOT
+#     pulled in here. bf16 (~52 GB) fits a single 80 GB H100 out of the box.
+#   * Always consult the model card for the exact, currently-required versions:
+#         https://huggingface.co/google/diffusiongemma-26B-A4B-it
+# Lower bounds are deliberately loose so you can move forward to whatever the
+# model card requires.
+# ---------------------------------------------------------------------------
+[project.optional-dependencies]
+gpu = [
+    "torch>=2.3",
+    "transformers>=4.44",        # see NOTE above — may need a much newer build or git+source
+    "accelerate>=0.30",
+    "sentencepiece>=0.2",
+    "huggingface_hub>=0.23",
+    "einops>=0.8",
+    "safetensors>=0.4",
+    "protobuf>=3.20",            # some Gemma tokenizers need it to parse the tokenizer model
+]
+
+# Optional: the FULL multimodal Gemma4 processor (AutoProcessor) pulls in PIL and
+# torchvision. This demo is TEXT-ONLY and the engine automatically falls back to
+# the plain tokenizer when these are absent, so you usually do NOT need them.
+# Install only if you specifically want the complete processor:
+#     uv sync --extra gpu --extra multimodal
+# NOTE: torchvision is version-locked to torch; uv resolves a matching pair.
+multimodal = [
+    "pillow>=10",
+    "torchvision>=0.18",
+]
+
+[project.scripts]
+# Short, memorable launch command: `uv run dlm` (dlm = diffusion language model).
+dlm = "app.server:main"
+
+[project.urls]
+"Model card" = "https://huggingface.co/google/diffusiongemma-26B-A4B-it"
+
+# ---------------------------------------------------------------------------
+# Packaging: flat layout. `app` is a top-level package at the repo root and the
+# entry point imports it as `app.server`. We declare the package explicitly so
+# setuptools' flat-layout auto-discovery does not choke on the sibling `web/`
+# and `slurm/` directories (it would otherwise error with "Multiple top-level
+# packages discovered").
+#
+# `uv sync` installs this project in editable mode by default, so the running
+# server resolves the on-disk `web/` directory directly — both
+#   uv run dlm                            (uses the [project.scripts] entry point)
+#   uvicorn app.server:app                (cwd = repo root puts `app` on sys.path)
+# work from the project root.
+# ---------------------------------------------------------------------------
+[tool.setuptools]
+packages = ["app"]
+
+# web/ assets are served from disk (StaticFiles + index.html). They are shipped
+# alongside the source tree for editable installs; if you build a standalone
+# wheel, include them via the data files glob below.
+[tool.setuptools.package-data]
+app = ["py.typed"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["__pycache__"]

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="DiffusionGemma — an experimental block-diffusion language model from Google. Watch text resolve from noise through iterative denoising." />
+  <title>DiffusionGemma — text that resolves from noise</title>
+
+  <!-- All assets are served from /static (see shared contract). No external CDNs/fonts/JS. -->
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <!-- Preload the view modules; app.js is the orchestrator that imports + initializes them. -->
+  <link rel="modulepreload" href="/static/js/howto.js" />
+  <link rel="modulepreload" href="/static/js/playground.js" />
+  <link rel="modulepreload" href="/static/js/slides.js" />
+  <script type="module" src="/static/js/app.js"></script>
+</head>
+<body>
+  <!-- Ambient background: deep navy with a soft radial glow + faint grid. Pure CSS, no assets. -->
+  <div class="bg" aria-hidden="true">
+    <div class="bg-glow"></div>
+    <div class="bg-grid"></div>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="#howto" aria-label="DiffusionGemma home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" role="img" aria-hidden="true">
+          <defs>
+            <linearGradient id="gmark" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#8ab4f8" />
+              <stop offset="1" stop-color="#4285F4" />
+            </linearGradient>
+          </defs>
+          <path d="M12 1.5 L21 8 L12 22.5 L3 8 Z" fill="url(#gmark)"/>
+          <path d="M12 1.5 L21 8 L12 12 Z" fill="#aecbfa" opacity=".75"/>
+          <path d="M12 1.5 L3 8 L12 12 Z" fill="#cfe0fd" opacity=".55"/>
+        </svg>
+      </span>
+      <span class="brand-name">Diffusion<span class="brand-accent">Gemma</span></span>
+      <span class="brand-tag">experimental</span>
+    </a>
+
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button class="tab" id="tab-howto" role="tab" aria-selected="true" aria-controls="view-howto" data-view="howto">How it works</button>
+      <button class="tab" id="tab-playground" role="tab" aria-selected="false" aria-controls="view-playground" data-view="playground">Playground</button>
+      <button class="tab" id="tab-slides" role="tab" aria-selected="false" aria-controls="view-slides" data-view="slides">Slides</button>
+    </nav>
+
+    <div class="status" id="header-status" aria-live="polite">
+      <span class="status-dot" data-state="unknown"></span>
+      <span class="status-text">connecting…</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============================ HOW IT WORKS ============================ -->
+    <section id="view-howto" class="view" role="tabpanel" aria-labelledby="tab-howto" tabindex="-1">
+
+      <!-- Hero -->
+      <section class="hero reveal" data-reveal>
+        <p class="eyebrow">Experimental · Google · Apache-2.0</p>
+        <h1 class="hero-title">Diffusion<span class="grad">Gemma</span></h1>
+        <p class="hero-sub">A block-diffusion language model that doesn't type — it <em>denoises</em>. Words emerge from a field of noise, the most confident first, until a clean answer remains.</p>
+
+        <!-- Animated line that resolves from noise (driven by howto.js, canned, no server) -->
+        <div class="hero-resolve viz-surface" aria-label="A line of text resolving from noise">
+          <div class="mono" id="hero-resolve"></div>
+        </div>
+
+        <div class="hero-cta">
+          <button class="btn btn-primary" data-goto="playground">Try the Playground</button>
+          <a class="btn btn-ghost" href="#what">See how it works ↓</a>
+        </div>
+      </section>
+
+      <!-- What is text diffusion -->
+      <section id="what" class="section reveal" data-reveal>
+        <span class="kicker">01 — The idea</span>
+        <h2>What is text diffusion?</h2>
+        <p class="lead">
+          Most language models are <strong>autoregressive</strong>: they write like a typewriter, one token after another,
+          left to right, each new word conditioned only on what already exists. DiffusionGemma works differently. It lays
+          down a fixed <strong>canvas</strong> of placeholder <span class="tok-name">MASK</span> tokens and repeatedly
+          <strong>denoises the whole block at once</strong> — the most confident tokens snap into place first, and the rest
+          fill in around them over a handful of passes.
+        </p>
+
+        <div class="diagram cards-2">
+          <article class="card">
+            <header class="card-head"><span class="dot dot-amber"></span> Autoregressive — typewriter</header>
+            <div class="viz-surface"><div class="mono" id="cmp-ar"></div></div>
+            <p class="card-note">One token at a time, strictly left → right. Earlier tokens can never be revised.</p>
+          </article>
+          <article class="card">
+            <header class="card-head"><span class="dot dot-blue"></span> Diffusion — canvas</header>
+            <div class="viz-surface"><div class="mono" id="cmp-diff"></div></div>
+            <p class="card-note">The entire block resolves together. Confident words commit early and guide the rest.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- The canvas + iterative denoising -->
+      <section class="section reveal" data-reveal>
+        <span class="kicker">02 — The mechanism</span>
+        <h2>The canvas &amp; iterative denoising</h2>
+        <p class="lead">
+          Generation happens over a fixed-size token canvas — a <strong>block of 256 tokens</strong> by default. The canvas
+          begins as pure placeholder/MASK tokens and is refined over <strong>up to 48 denoising steps</strong>. On each pass
+          roughly <strong>15–20 tokens resolve</strong>: the lowest-entropy (highest-confidence) tokens are committed first and
+          immediately act as context for everything still unresolved.
+        </p>
+
+        <div class="viz-surface big">
+          <div class="mono" id="mini-denoise" aria-label="A 256-token canvas denoising from noise into text"></div>
+          <div class="mini-cap"><span id="mini-step">step 0 / 48</span> · low-entropy tokens commit first</div>
+        </div>
+
+        <div class="steps-flow">
+          <div class="flow-node"><span class="flow-n">1</span> Canvas = all MASK</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node"><span class="flow-n">2</span> Denoise · commit confident tokens</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node"><span class="flow-n">3</span> Repeat (≤48×)</div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-node done"><span class="flow-n">4</span> Commit canvas → KV cache → next block</div>
+        </div>
+        <p class="card-note center">When a canvas is fully denoised it is written to the KV cache and the next canvas begins — so the model is <em>block-autoregressive</em>: diffusion inside a block, left-to-right across blocks.</p>
+      </section>
+
+      <!-- Bidirectional attention -->
+      <section class="section reveal" data-reveal>
+        <span class="kicker">03 — Why it can self-correct</span>
+        <h2>Bidirectional attention &amp; self-correction</h2>
+        <div class="cards-2">
+          <div>
+            <p class="lead">
+              While <strong>reading your prompt</strong> (prefill) attention is <strong>causal</strong> — standard left-to-right.
+              But while <strong>denoising a canvas</strong> attention is <strong>bidirectional</strong>: every position can see both
+              the left <em>and</em> the right context at the same time.
+            </p>
+            <p>
+              Because it evaluates the whole block on every step, the model can <strong>revise its own earlier guesses</strong>.
+              A word that looked plausible on step 3 can be overwritten on step 7 once the surrounding tokens commit —
+              mistakes get fixed in real time, instead of being locked in forever like a typewriter.
+            </p>
+          </div>
+          <div class="card attn-card">
+            <header class="card-head"><span class="dot dot-blue"></span> Attention, two modes</header>
+            <ul class="feature-list">
+              <li><strong>Prefill (prompt):</strong> causal — each token sees only what precedes it.</li>
+              <li><strong>Denoising (canvas):</strong> bidirectional — full left+right context.</li>
+              <li><strong>Result:</strong> in-place editing, infilling, and self-repair within a block.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- EB sampler -->
+      <section class="section reveal" data-reveal>
+        <span class="kicker">04 — The sampler</span>
+        <h2>The EB sampler, parameter by parameter</h2>
+        <p class="lead">
+          DiffusionGemma uses <strong>Entropy-Bounded Denoising with Adaptive Stopping (EB)</strong>. Every control below is exposed
+          in the Playground — so this page and the demo reinforce each other.
+        </p>
+
+        <div class="param-grid">
+          <div class="param-doc">
+            <h3>max_denoising_steps <span class="def">default 48</span></h3>
+            <p>The ceiling on how many refinement passes a single canvas may take. More steps → more chances to revise, but more compute. Adaptive stopping often finishes well before the cap.</p>
+          </div>
+          <div class="param-doc">
+            <h3>temperature_start → temperature_end <span class="def">0.8 → 0.4</span></h3>
+            <p>Sampling temperature decays linearly over the steps. Early passes stay <strong>exploratory</strong> (0.8); later passes turn <strong>decisive</strong> (0.4) to lock the answer in cleanly.</p>
+          </div>
+          <div class="param-doc">
+            <h3>entropy_bound <span class="def">default 0.1</span></h3>
+            <p>The confidence gate. Only tokens whose predictive entropy falls <em>under</em> the bound are allowed to commit on a pass — lowest-entropy first. Lower bound = stricter, slower, steadier; higher = bolder commits.</p>
+          </div>
+          <div class="param-doc">
+            <h3>adaptive_stop_threshold <span class="def">default 0.005</span></h3>
+            <p>Early-exit for a canvas. Once the remaining entropy across the block drops below this, denoising stops — no need to spend the full 48 steps when the block is already settled.</p>
+          </div>
+          <div class="param-doc">
+            <h3>canvas_length <span class="def">default 256</span></h3>
+            <p>The block size in tokens. The whole block is denoised together; bigger blocks see more context per pass, smaller blocks commit faster.</p>
+          </div>
+          <div class="param-doc">
+            <h3>max_new_tokens · top_k · seed</h3>
+            <p><strong>max_new_tokens</strong> caps total output (spread across blocks). <strong>top_k</strong> optionally restricts each choice to the k most likely tokens (0 = off). <strong>seed</strong> fixes randomness for reproducible runs (empty = random).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Speed & hardware -->
+      <section class="section reveal" data-reveal>
+        <span class="kicker">05 — Speed &amp; hardware</span>
+        <h2>Fast, because it denoises in parallel</h2>
+        <p class="lead">
+          Resolving many tokens per pass instead of one-at-a-time makes DiffusionGemma roughly <strong>4× faster</strong> than a
+          comparable autoregressive model on GPU. It is a <strong>Mixture-of-Experts</strong> model: 26B parameters total, but only
+          ~3.8B active per token (8 of 128 experts).
+        </p>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-num">1000<span>+ tok/s</span></div><div class="stat-lbl">on an NVIDIA H100</div></div>
+          <div class="stat"><div class="stat-num">~700<span> tok/s</span></div><div class="stat-lbl">on an RTX 5090</div></div>
+          <div class="stat"><div class="stat-num">~18<span> GB</span></div><div class="stat-lbl">fp8 footprint</div></div>
+          <div class="stat"><div class="stat-num">~52<span> GB</span></div><div class="stat-lbl">bf16 (fits one 80GB H100)</div></div>
+        </div>
+        <p class="card-note">Tradeoff: raw quality sits a touch below standard Gemma — you trade a little polish for a lot of speed and flexibility.</p>
+      </section>
+
+      <!-- Use cases + CTA -->
+      <section class="section reveal" data-reveal>
+        <span class="kicker">06 — Where it shines</span>
+        <h2>Built for non-linear text</h2>
+        <p class="lead">Because it edits a whole block at once, the model is especially strong wherever order isn't strictly left-to-right:</p>
+        <div class="chips">
+          <span class="chip">Infilling</span>
+          <span class="chip">In-line editing</span>
+          <span class="chip">Code</span>
+          <span class="chip">Markdown</span>
+          <span class="chip">Structured / tabular text</span>
+        </div>
+
+        <div class="cta-panel">
+          <h2>See it resolve, live.</h2>
+          <p>Send a prompt, then scrub through every denoising frame at whatever speed you like.</p>
+          <button class="btn btn-primary btn-lg" data-goto="playground">Open the Playground →</button>
+          <p class="fineprint">DiffusionGemma is an experimental model from Google (model id <code>google/diffusiongemma-26B-A4B-it</code>), released ~2026‑06‑10 under Apache‑2.0. Loading the weights may require a Hugging Face token.</p>
+        </div>
+      </section>
+
+      <footer class="site-foot">DiffusionGemma demo · denoising visualization · runs fully offline once loaded</footer>
+    </section>
+
+    <!-- ============================ PLAYGROUND ============================ -->
+    <!-- The playground is built dynamically from /api/config by playground.js. -->
+    <section id="view-playground" class="view" role="tabpanel" aria-labelledby="tab-playground" tabindex="-1" hidden>
+      <div id="pg-root" class="pg-root"><!-- populated by playground.js --></div>
+    </section>
+
+    <!-- ============================== SLIDES =============================== -->
+    <!-- A self-contained horizontal slide deck, built dynamically by slides.js. -->
+    <section id="view-slides" class="view" role="tabpanel" aria-labelledby="tab-slides" tabindex="-1" hidden>
+      <div id="slides-root" class="deck"><!-- populated by slides.js --></div>
+    </section>
+  </main>
+</body>
+</html>

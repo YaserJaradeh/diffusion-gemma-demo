@@ -1,0 +1,40 @@
+# Environments
+.env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.so
+
+# uv — the lockfile IS committed (reproducible installs); do not ignore it.
+
+# Hugging Face / model cache (never commit weights)
+.cache/
+hf_home/
+*.safetensors
+*.bin
+*.gguf
+
+# SLURM logs
+slurm-*.out
+*.err
+logs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Testing / tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
