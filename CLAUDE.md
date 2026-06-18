@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 ## What this is
 
-An interactive web demo for Google's **DiffusionGemma `26B-A4B-it`** — a discrete *block-diffusion* (MoE) language model that generates text by iteratively denoising a fixed token "canvas" rather than left-to-right. The app has two views (a scrollable **How-it-works** explainer and a **Playground**) and its centerpiece is visualizing text *resolving from noise*, with a client-side **playback speed** control. It runs on a single H100 via SLURM; the UI is reached over an SSH tunnel.
+An interactive web demo for Google's **DiffusionGemma `26B-A4B-it`** — a discrete *block-diffusion* (MoE) language model that generates text by iteratively denoising a fixed token "canvas" rather than left-to-right. The app has two views (a scrollable **How-it-works** explainer and a **Playground**) and its centerpiece is visualizing text *resolving from noise*, with a client-side **playback speed** control. It runs on a single H100; the UI is reached over an SSH tunnel.
 
 ## Commands
 
@@ -55,7 +55,7 @@ The WebSocket (`/ws/generate`) cannot be exercised by Starlette's `TestClient` (
 
 **Generation speed is decoupled from display speed.** The server streams every denoising frame as fast as it's produced; the client (`playground.js`) buffers them all and a separate playback loop renders at a user-controlled `ms/frame`. This is why a 1000+ tok/s model is still watchable, and why stats (`gen_seconds`, `tokens/s`) are measured **server-side around `generate()`** and are unaffected by the playback slider.
 
-**Frontend is fully self-contained — no CDNs, no build step.** SLURM compute nodes are usually offline, so `web/` uses only vanilla HTML/CSS + ES modules (system/monospace fonts). `web/js/app.js` boots, fetches `/api/health`+`/api/config`, and routes between the two views; `howto.js` and `playground.js` are the views.
+**Frontend is fully self-contained — no CDNs, no build step.** Remote GPU compute nodes are usually offline, so `web/` uses only vanilla HTML/CSS + ES modules (system/monospace fonts). `web/js/app.js` boots, fetches `/api/health`+`/api/config`, and routes between the two views; `howto.js` and `playground.js` are the views.
 
 ## Critical, non-obvious knowledge
 
@@ -66,4 +66,4 @@ The WebSocket (`/ws/generate`) cannot be exercised by Starlette's `TestClient` (
 - **Precision:** bf16 default (~52 GB, fits one 80 GB H100); `--fp8` (~18 GB) is an opt-in best-guess path that retries in bf16 on failure.
 - **Deployment reality:** the running copy lives on a remote cluster (e.g. `/nfs/.../Gemma`) at a *different path* than this repo and is updated by copying a tarball. `WEB_DIR` resolves relative to `app/server.py` (override with `DG_WEB_DIR`) so it's path-portable. Reach the UI via `ssh -N -L <port>:<computenode>:<port> <user>@<login-node>`.
 
-See `README.md` for the user-facing guide (run modes, all params, SLURM workflow, troubleshooting).
+See `README.md` for the user-facing guide (run modes, all params, remote/tunnel workflow, troubleshooting).

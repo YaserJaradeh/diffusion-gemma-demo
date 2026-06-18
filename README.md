@@ -300,30 +300,27 @@ and reused — especially important on shared clusters. Mock mode needs no token
 
 ---
 
-## Running on SLURM (H100) + SSH tunnel
+## Running on a remote H100 + SSH tunnel
 
-A ready-to-edit template lives at [`slurm/serve.sbatch`](slurm/serve.sbatch). It
-requests one H100, sets up the HF cache, launches the server, and — crucially —
-**prints the exact SSH tunnel command** so you can reach the UI from your laptop.
+Real mode is meant for a GPU box — one 80 GB H100 fits the bf16 model. When the
+server runs on a remote machine, reach the UI from your laptop with an SSH
+tunnel.
 
-1. Edit the obvious placeholders in `slurm/serve.sbatch`:
-   `--partition`, `--account`, `--gres`, walltime, and `LOGIN_NODE` / `HF_HOME`.
-2. Make sure the GPU deps are installed once: `uv sync --extra gpu`.
-3. Submit and follow the log:
-
-   ```bash
-   sbatch slurm/serve.sbatch
-   tail -f slurm-<jobid>.out
-   ```
-
-4. The log prints the node + tunnel line. On your **laptop**, run something like:
+1. Install the GPU deps once on the host: `uv sync --extra gpu`.
+2. Set `HF_TOKEN` (gated model) and point `HF_HOME` at fast/large storage so the
+   ~52 GB (bf16) download is cached and reused.
+3. Start the server on the GPU host (bind all interfaces):
 
    ```bash
-   ssh -N -L 8000:<compute-node>:8000 <user>@<LOGIN_NODE>
+   uv run dlm --host 0.0.0.0 --port 8000
    ```
 
-   then open <http://localhost:8000>. (The script fills in the real hostname and
-   port for copy/paste.)
+   The startup banner prints a ready-to-copy tunnel line.
+4. From your **laptop**, open the tunnel, then browse to <http://localhost:8000>:
+
+   ```bash
+   ssh -N -L 8000:<gpu-host>:8000 <user>@<remote>
+   ```
 
 ---
 
@@ -408,22 +405,6 @@ Always cross-check the current
 latest `transformers` for the authoritative API.
 
 ---
-
-## Project layout
-
-```
-diffusion-gemma/
-├── app/                  # FastAPI server + engines (owned elsewhere)
-│   ├── server.py         #   ASGI app + `main()` entry point
-│   └── engine.py         #   MockEngine / RealEngine  (ADAPTATION POINTS here)
-├── web/                  # static frontend (owned elsewhere)
-│   ├── index.html
-│   └── static/{css,js}/...
-├── slurm/serve.sbatch    # H100 SLURM template + SSH tunnel helper
-├── pyproject.toml        # uv / PEP-621 project + [gpu] extra
-├── .env.example          # copy to .env
-└── README.md
-```
 
 ## License
 
